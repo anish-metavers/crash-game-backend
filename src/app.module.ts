@@ -5,17 +5,16 @@ import { AuthModule } from './auth/auth.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { GameCronModule } from './cron/game.cron.module';
-import { BettingModule } from './betting/betting.module';
 import { GameModule } from './game/game.module';
-
+import { BetModule } from './bet/bet.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     MongooseModule.forRoot('mongodb://localhost:27017/CrashDB'),
     AuthModule,
-    BettingModule,
     GameModule,
-    // GameCronModule
+    BetModule,
+    GameCronModule
   ],
   controllers: [AppController],
   providers: [AppService],

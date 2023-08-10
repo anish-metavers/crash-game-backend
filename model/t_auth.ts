@@ -9,6 +9,9 @@ export type AuthDocument = HydratedDocument<Auth>;
   collection: 't_auth',
 })
 export class Auth {
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Wallet' })
+  walletId: string;
+  
   @Prop()
   name: string;
 
@@ -23,9 +26,6 @@ export class Auth {
 
   @Prop({ defaultValue: true })
   active: boolean;
-
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Wallet' })
-  walletId: string;
 }
 
 export const AuthSchema = SchemaFactory.createForClass(Auth);

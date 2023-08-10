@@ -2,15 +2,21 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import * as mongoose from 'mongoose';
 
-export type WalletDocument = HydratedDocument<Wallet>;
+export type GameDocument = HydratedDocument<Game>;
 
 @Schema({
   timestamps: true,
-  collection: 't_wallet',
+  collection: 't_game',
 })
-export class Wallet {
+export class Game {
+  @Prop({ type: mongoose.Types.Decimal128 })
+  gameCrashNumber: mongoose.Types.Decimal128;
+
   @Prop()
-  time: Date;
+  gameStatus: string;
+
+  @Prop()
+  time: number;
 }
 
-export const WalletSchema = SchemaFactory.createForClass(Wallet);
+export const GameSchema = SchemaFactory.createForClass(Game);
