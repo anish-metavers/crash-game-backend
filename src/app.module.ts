@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
-import { GameCronModule } from './cron/game.cron.module';
+import { CrashGameCronModule } from './cron/game.cron.module';
 import { GameModule } from './game/game.module';
 import { BetModule } from './bet/bet.module';
 @Module({
@@ -14,7 +14,7 @@ import { BetModule } from './bet/bet.module';
     AuthModule,
     GameModule,
     BetModule,
-    GameCronModule
+    CrashGameCronModule
   ],
   controllers: [AppController],
   providers: [AppService],

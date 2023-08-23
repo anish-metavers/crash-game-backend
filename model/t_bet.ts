@@ -27,6 +27,11 @@ export class Bet {
   @Prop({ type: Date, defaultValue: new Date() })
   time: Date;
 
+  @Prop({})
+  outNumber: number;
+
+  @Prop({ default: null, defaultValue: null })
+  crashNumber: number;
   @Prop({ type: mongoose.Types.Decimal128, defaultValue: 0 })
   profit: mongoose.Types.Decimal128;
 }

@@ -9,8 +9,11 @@ export type WalletDocument = HydratedDocument<Wallet>;
   collection: 't_wallet',
 })
 export class Wallet {
-  @Prop({ type:mongoose.Types.Decimal128, defaultValue:1000})
-  amount: mongoose.Types.Decimal128
+  @Prop({ type: mongoose.Types.ObjectId })
+  userId: mongoose.Types.ObjectId;
+
+  @Prop({ type: mongoose.Types.Decimal128, defaultValue: 1000 })
+  amount: mongoose.Types.Decimal128;
 }
 
 export const WalletSchema = SchemaFactory.createForClass(Wallet);

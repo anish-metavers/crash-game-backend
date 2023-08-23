@@ -19,13 +19,13 @@ export class AuthService {
   //USER SIGNUP APIs
   async signupUser(createSignup: SignupDto) {
     const { name, email, password } = createSignup;
-    const token = jwt.sign(
-      {
-        email,
-      },
-      'secret',
-      { expiresIn: '1h' },
-    );
+    // const token = jwt.sign(
+    //   {
+    //     email,
+    //   },
+    //   'secret',
+    //   { expiresIn: '1h' },
+    // );
     const findEmail = await this.authModel.findOne({ email: email });
     if (!findEmail) {
       const signup = new this.authModel({
@@ -34,9 +34,23 @@ export class AuthService {
         password,
       });
 
-      const wallet = await this.walletModel.create({ amount: 1000 });
+      const wallet = await this.walletModel.create({
+        amount: 1000,
+        userId: signup._id,
+      });
       signup.walletId = wallet._id.toString();
       await signup.save();
+
+      let id = signup?._id;
+
+      const token = jwt.sign(
+        {
+          id,
+          email,
+        },
+        'secret',
+        { expiresIn: '1h' },
+      );
 
       throw new HttpException(
         { message: 'Signup successfully', signup, token },
@@ -49,17 +63,20 @@ export class AuthService {
   //USER LOGIN APIs
   async loginUser(loginDto: LoginDto) {
     const { email, password } = loginDto;
-    const token = jwt.sign(
-      {
-        email,
-      },
-      'secret',
-      { expiresIn: '1h' },
-    );
     const login = await this.authModel.findOne({
       email: email,
       password: password,
     });
+
+    let id = login?._id;
+    const token = jwt.sign(
+      {
+        id,
+        email,
+      },
+      'secret',
+      { expiresIn: '24h' },
+    );
 
     if (!login) {
       throw new HttpException(

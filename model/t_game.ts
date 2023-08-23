@@ -9,6 +9,9 @@ export type GameDocument = HydratedDocument<Game>;
   collection: 't_game',
 })
 export class Game {
+  @Prop()
+  currentNumber: number;
+
   @Prop({ type: mongoose.Types.Decimal128 })
   gameCrashNumber: mongoose.Types.Decimal128;
 

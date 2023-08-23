@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Req } from '@nestjs/common';
 import { CreateBetDto } from './dto/create-bet.dto';
 import { UpdateBetDto } from './dto/update-bet.dto';
 import { Bet, BetDocument } from 'model/t_bet';
@@ -20,22 +20,22 @@ export class BetService {
     private gameModel: Model<GameDocument>,
     @InjectModel(Wallet.name)
     private walletModel: Model<WalletDocument>,
-  ) {}
+  ) { }
 
   //Create Bet APIs
-  async create(createBetDto: CreateBetDto) {
+  async create(req: Request,createBetDto: CreateBetDto) {
+    const user_id = req['user_id'];
+    req.body['user_id'] = user_id;
+    createBetDto['user_id'] = user_id;
     if (gameStatus == 'Betting Open') {
-      const { gameId, userId, walletId, amount, payout } = createBetDto;
-      const findBet = await this.betModel.findOne({
+      const { gameId, amount, payout } = createBetDto;
+      const findGameId = await this.betModel.findOne({
         gameId,
-        userId,
-        walletId
       });
-      if (!findBet) {
+      if (!findGameId) {
         const betCreate = new this.betModel({
           gameId: gameId,
-          userId: userId,
-          walletId: walletId,
+          userId: user_id,
           amount: amount || 1,
           payout: payout || 100,
           time: new Date(),
@@ -47,37 +47,8 @@ export class BetService {
           201,
         );
       } else {
-        const betDel = await this.betModel.deleteOne({
-          gameId: gameId,
-          userId: userId,
-          walletId: walletId
-        });
-        throw new HttpException(
-          {
-            message: 'Bet deleted successfully',
-            betDel,
-          },
-          200,
-        );
+        throw new HttpException({ message: 'Betting already created' }, 401);
       }
-      // const findAmount=await this.walletModel.findOne()
-      // await this.walletModel.updateOne({
-      //   $set: {
-      //     amount: amount - amount,
-      //   },
-      // });
-
-      // const auth = await this.authModel.find();
-      // const game = await this.gameModel.find();
-      // bet.walletId = auth[0].walletId.toString();
-      // bet.userId = auth[0]._id.toString();
-      // bet.gameId = game[0]._id.toString();
-      // await bet.save();
-
-      // throw new HttpException(
-      //   { message: 'Bet Created successfully', bet },
-      //   201,
-      // );
     } else {
       throw new HttpException(
         {
@@ -88,23 +59,23 @@ export class BetService {
     }
   }
 
-  findAll() {
-    return `This action returns all bet`;
-  }
+  // findAll() {
+  //   return `This action returns all bet`;
+  // }
 
-  findOne(id: number) {
-    return `This action returns a #${id} bet`;
-  }
+  // findOne(id: number) {
+  //   return `This action returns a #${id} bet`;
+  // }
 
   //Update Bet APIs
   async update(id: string, updateBetDto: UpdateBetDto) {
     if (gameStatus == 'Betting Open') {
-      const { amount, payout } = updateBetDto;
-
+      const { gameId, amount, payout } = updateBetDto;
       await this.betModel.updateOne(
         { _id: id },
         {
           $set: {
+            gameId,
             amount,
             payout,
           },
@@ -116,7 +87,7 @@ export class BetService {
     }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} bet`;
-  }
+  // remove(id: number) {
+  //   return `This action removes a #${id} bet`;
+  // }
 }

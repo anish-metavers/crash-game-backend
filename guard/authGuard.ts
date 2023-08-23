@@ -1,76 +1,65 @@
-// import {
-//     Injectable,
-//     CanActivate,
-//     ExecutionContext,
-//     HttpException,
-//   } from '@nestjs/common';
-//   import * as jwt from 'jsonwebtoken';
-  
-//   @Injectable()
-//   export class AuthGuard implements CanActivate {
-//     async canActivate(context: ExecutionContext) {
-//       const req = context.switchToHttp().getRequest();
-//       let token = null;
-//       if (
-//         req.headers.authorization &&
-//         req.headers.authorization.startsWith('Bearer')
-//       ) {
-//         token = req.headers.authorization.split(' ')[1];
-//       }
-//       if (!token) {
-//         throw new HttpException(
-//           {
-//             message: 'No token found',
-//             statusCode: 401,
-//           },
-//           401,
-//         );
-//       }
-//       let userid: number;
-//       try {
-//         const decoded = jwt.verify(token, 'secret');
-//         userid = decoded.userid;
-//       } catch (error) {
-//         throw new HttpException(
-//           {
-//             message: 'Invalid token',
-//             statusCode: 401,
-//           },
-//           401,
-//         );
-//       }
-  
-//       const AerospikeClient = Aerospike.client({
-//         hosts: [
-//           {
-//             addr: 'localhost',
-//             port: Number(3000),
-//           },
-//         ],
-//       });
-  
-//       const client = await AerospikeClient.connect();
-  
-//       const aeroKey = new Aerospike.Key('test', 'helperuser', userid);
-  
-//       let exists = await client.exists(aeroKey);
-  
-//       if (!exists) {
-//         throw new HttpException({ message: 'No User Found' }, 404);
-//       }
-  
-//       let record = await client.get(aeroKey);
-  
-//       if (!record)
-//         throw new HttpException(
-//           {
-//             message: 'No user found',
-//             statusCode: 401,
-//           },
-//           401,
-//         );
-//       req['user'] = record.bins;
-//       return true;
-//     }
-//   }
-  
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  HttpException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Auth, AuthDocument } from 'model/t_auth';
+import { Model } from 'mongoose';
+import { ErrorConfig } from 'utils/config';
+import * as jwt from 'jsonwebtoken';
+@Injectable()
+export class AuthGuard implements CanActivate {
+  constructor(
+    @InjectModel(Auth.name)
+    private authModel: Model<AuthDocument>,
+  ) {}
+
+  async canActivate(context: ExecutionContext) {
+    const req = context.switchToHttp().getRequest();
+    let token = null;
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+    if (!token) {
+      throw new HttpException(
+        {
+          ...ErrorConfig.NO_TOKEN_FOUND,
+          statusCode: 401,
+        },
+        401,
+      );
+    }
+    let id: string;
+    try {
+      const decoded = jwt.verify(token, 'secret');
+      id = decoded.id;
+    } catch (error) {
+      throw new HttpException(
+        {
+          ...ErrorConfig.INVALID_TOKEN,
+          statusCode: 401,
+        },
+        401,
+      );
+    }
+
+    const user = await this.authModel.findOne({ _id: id });
+    
+    if (!user)
+      throw new HttpException(
+        {
+          ...ErrorConfig.NO_USER_FOUND,
+          statusCode: 401,
+        },
+        401,
+      );
+    req['user_id'] = user.id;
+    // console.log(req['user_id'], user.id);
+    return true;
+  }
+}

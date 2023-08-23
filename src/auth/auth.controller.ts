@@ -1,5 +1,6 @@
-import { Controller, Post, Body, UseFilters } from '@nestjs/common';
+import { Controller, Post, Body, UseFilters, UseGuards } from '@nestjs/common';
 import { HttpExceptionFilter } from 'exception/httpExceptionFilter';
+import { AuthGuard } from 'guard/authGuard';
 import { AuthService } from './auth.service';
 import { SignupDto, LoginDto } from './dto/create-auth.dto';
 
@@ -7,7 +8,6 @@ import { SignupDto, LoginDto } from './dto/create-auth.dto';
 @Controller('/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
   @Post('/signup')
   async signup(@Body() signup: SignupDto) {
     return this.authService.signupUser(signup);
