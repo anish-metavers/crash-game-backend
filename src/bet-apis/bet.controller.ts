@@ -1,13 +1,10 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
   Patch,
   Param,
-  Delete,
   UseFilters,
-  Query,
   UseGuards,
   Req,
 } from '@nestjs/common';
@@ -38,9 +35,13 @@ export class BetController {
   //   return this.betService.findOne(+id);
   // }
 
-  @UseGuards(AuthGuard)
+  // @UseGuards(AuthGuard)
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBetDto: UpdateBetDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateBetDto: UpdateBetDto,
+    @Req() req: Request,
+  ) {
     return this.betService.update(id, updateBetDto);
   }
 

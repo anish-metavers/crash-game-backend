@@ -4,9 +4,10 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
-import { CrashGameCronModule } from './cron/game.cron.module';
+import { CrashGameCronModule } from './game-cron/game.cron.module';
 import { GameModule } from './game/game.module';
-import { BetModule } from './bet/bet.module';
+import { BetModule } from './bet-apis/bet.module';
+import { GameApisModule } from './game-apis/game-apis.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
@@ -14,7 +15,8 @@ import { BetModule } from './bet/bet.module';
     AuthModule,
     GameModule,
     BetModule,
-    CrashGameCronModule
+    CrashGameCronModule,
+    GameApisModule
   ],
   controllers: [AppController],
   providers: [AppService],

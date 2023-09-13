@@ -9,8 +9,8 @@ export type GameDocument = HydratedDocument<Game>;
   collection: 't_game',
 })
 export class Game {
-  @Prop()
-  currentNumber: number;
+  @Prop({ defaultValue: 1000 })
+  crashId: number;
 
   @Prop({ type: mongoose.Types.Decimal128 })
   gameCrashNumber: mongoose.Types.Decimal128;
@@ -18,8 +18,11 @@ export class Game {
   @Prop()
   gameStatus: string;
 
+  @Prop({ type: Date, defaultValue: new Date() })
+  time: Date;
+
   @Prop()
-  time: number;
+  isBetActive: boolean;
 }
 
 export const GameSchema = SchemaFactory.createForClass(Game);
