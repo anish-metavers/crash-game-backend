@@ -1,29 +1,26 @@
-import { HttpException, Injectable, Req } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { CreateBetDto } from './dto/create-bet.dto';
-import { UpdateBetDto } from './dto/update-bet.dto';
 import { Bet, BetDocument } from 'model/t_bet';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model } from 'mongoose';
-import { Auth, AuthDocument } from 'model/t_auth';
 import { Game, GameDocument } from 'model/t_game';
-import { gameStatus } from 'src/game-cron/game.cron.service';
+import { addBetLoacal, getBetsLocal } from 'src/game-cron/game.cron.service';
 import { Wallet, WalletDocument } from 'model/t_wallet';
+import { cashOut } from 'src/game-cron/game.cron.service';
 
 @Injectable()
 export class BetService {
   constructor(
     @InjectModel(Bet.name)
     private betModel: Model<BetDocument>,
-    @InjectModel(Auth.name)
-    private authModel: Model<AuthDocument>,
     @InjectModel(Game.name)
     private gameModel: Model<GameDocument>,
     @InjectModel(Wallet.name)
     private walletModel: Model<WalletDocument>,
   ) {}
 
-  //Create Bet APIs
-  async create(req: Request, createBetDto: CreateBetDto) {
+  //Create Bets APIs
+  async createBet(req: Request, createBetDto: CreateBetDto) {
     const user_id = req['user_id'];
     req.body['user_id'] = user_id;
     createBetDto['user_id'] = user_id;
@@ -37,26 +34,45 @@ export class BetService {
       });
       const walletAmount = +wallet[0].amount;
       if (walletAmount >= amount) {
-        const findGameId = await this.betModel.findOne({
+        await this.betModel.findOne({
           gameId,
         });
-        if (!findGameId) {
-          const betCreate = new this.betModel({
-            gameId: gameId,
-            userId: user_id,
-            amount: amount || 1,
-            payout: payout || 100,
-            time: new Date(),
-            profit: 0.0,
-          });
-          await betCreate.save();
+
+        const betData = getBetsLocal();
+        const userBet = betData.findIndex((b) => b.userId === user_id);
+        console.log('user bet', userBet);
+        if (userBet !== -1) {
           throw new HttpException(
-            { message: 'Bet Created successfully.', betCreate },
-            201,
+            {
+              message: 'Betting already created. !',
+              // betData: userBet,
+              // allbets: betData,
+            },
+            401,
           );
-        } else {
-          throw new HttpException({ message: 'Betting already created.' }, 401);
         }
+        const betCreate = new this.betModel({
+          gameId: gameId,
+          userId: user_id,
+          amount: amount || 1,
+          payout: payout || 100,
+          time: new Date(),
+          profit: 0.0,
+        });
+        await betCreate.save();
+        addBetLoacal({
+          gameId: gameId,
+          userId: user_id,
+          amount: amount || 1,
+          payout: payout || 100,
+          time: new Date(),
+          profit: 0.0,
+        });
+        console.log('all bet response :', getBetsLocal());
+        throw new HttpException(
+          { message: 'Bet Created successfully.', betCreate },
+          201,
+        );
       } else {
         throw new HttpException({ message: 'insufficient balance. !!!!' }, 401);
       }
@@ -70,34 +86,18 @@ export class BetService {
     }
   }
 
-  // findAll() {
-  //   return `This action returns all bet`;
-  // }
+  //Cash out APIs
+  async crashOut(req: Request) {
+    try {
+      const user_id = req['user_id'];
+      cashOut(user_id);
 
-  // findOne(id: number) {
-  //   return `This action returns a #${id} bet`;
-  // }
-
-  //Update Bet APIs
-  async update(id: string, updateBetDto: UpdateBetDto) {
-    if (gameStatus == 'Betting Open') {
-      const { amount, payout } = updateBetDto;
-      await this.betModel.updateOne(
-        { _id: id },
-        {
-          $set: {
-            amount,
-            payout,
-          },
-        },
+      throw new HttpException(
+        { message: 'user_id passed successfully', user_id },
+        201,
       );
-      throw new HttpException({ message: `Bet updated successfully` }, 200);
-    } else {
-      throw new HttpException({ message: `Betting Closed` }, 401);
+    } catch (error) {
+      console.log(error);
     }
   }
-
-  // remove(id: number) {
-  //   return `This action removes a #${id} bet`;
-  // }
 }

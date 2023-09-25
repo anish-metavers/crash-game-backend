@@ -93,3 +93,61 @@ const gameResult = (seed, salt) => {
   return Math.max(1, result / 100);
 };
 gameResultGenrator()
+
+const cashOut = async (userId) => {
+  // Find the user's bet in the normalBet array
+  const userBetIndex = normalBet.findIndex(
+    (bet) => bet.userId.userId === userId
+  );
+  // If the user is found and has not cashed out yet
+  if (userBetIndex !== -1) {
+    const userBet = normalBet[userBetIndex];
+    // Calculate the cashed out amount (for simplicity, let's assume it's the amount multiplied by the current multiplier)
+    const cashedOutAmount = userBet.userId.amount * multipliers;
+    // Remove the user's bet from the normalBet array
+    normalBet.splice(userBetIndex, 1);
+    const testDb = `${userBet.userId.name} cash out at ${multipliers.toFixed(
+      2
+    )}X`;
+    (userBet.userId.cashOut = true),
+      (userBet.userId.cashOutAmount = cashedOutAmount);
+    userBet.userId.cashOutAt = multipliers;
+    await betHistoryModal.updateOne(
+      { betId: userBet.userId.betId },
+      { $set: { profitAmount: cashedOutAmount, profit: true } }
+    );
+    const fieldToUpdate = `balance.$[element].balance`;
+    const updateValue = {};
+    updateValue[fieldToUpdate] = cashedOutAmount.toFixed(2);
+    console.log("update value", updateValue);
+    await userModal.findByIdAndUpdate(
+      userBet.userId.userId,
+      {
+        $inc: updateValue,
+      },
+      {
+        arrayFilters: [{ "element.currencyId": Number(userBet.userId.coinId) }],
+        new: true,
+      }
+    );
+    // Emit an event to notify all clients that the user has cashed out
+    ioInstance.emit("testSocket", { testDb, userBet });
+    const obj = {
+      succes: true,
+      cashOutAmount: cashedOutAmount,
+      coinId: userBet.userId.coinId,
+    };
+    return obj;
+    // TODO: You might want to update the user's balance or perform other related tasks here
+  } else {
+    // Handle the case where the user is not found or has already cashed out
+    console.error(
+      `User with ID ${userId} not found or has already cashed out.`
+    );
+    const obj = {
+      succes: false,
+    };
+    return obj;
+  }
+};
+

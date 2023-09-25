@@ -19,13 +19,7 @@ export class AuthService {
   //USER SIGNUP APIs
   async signupUser(createSignup: SignupDto) {
     const { name, email, password } = createSignup;
-    // const token = jwt.sign(
-    //   {
-    //     email,
-    //   },
-    //   'secret',
-    //   { expiresIn: '1h' },
-    // );
+
     const findEmail = await this.authModel.findOne({ email: email });
     if (!findEmail) {
       const signup = new this.authModel({
@@ -49,7 +43,7 @@ export class AuthService {
           email,
         },
         'secret',
-        { expiresIn: '1h' },
+        { expiresIn: '24h' },
       );
 
       throw new HttpException(

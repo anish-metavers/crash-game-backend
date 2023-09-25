@@ -10,6 +10,8 @@ const CryptoJS = require('crypto-js');
 
 export let gameStatus = 'Game Waiting';
 export let bettingTime = 0;
+let allBetResponse = [];
+let multipliers = 1;
 @Injectable()
 export class CrashGameCronService {
   constructor(
@@ -22,7 +24,6 @@ export class CrashGameCronService {
     private gameGateway: GameGateway,
   ) {}
   private SocketServer = null;
-
   private flags = false;
   private readonly logger = new Logger(CrashGameCronService.name);
   @Cron('*/01 * * * * *')
@@ -36,10 +37,9 @@ export class CrashGameCronService {
         }
         let resultX = [];
         let hashX = [];
-        let multipliers = 1;
         let serverSpeed = 0.00001;
         let lastTime = Date.now();
-        let indexId = 0;
+        let indexId = 1;
         let countdownTimer = null;
 
         const gameLoop = async () => {
@@ -65,7 +65,7 @@ export class CrashGameCronService {
             this.SocketServer.emit('crashNumber', {
               crashNumber: resultX[indexId],
             });
-            console.log('crashed at', multipliers);
+            console.log('crashed at', multipliers.toFixed(2));
             console.log('hash value', hashX[indexId]);
             multipliers = 1.0;
 
@@ -83,7 +83,7 @@ export class CrashGameCronService {
 
             // function calling settle wallets
             this.settleWallet(gameEnded._id.toString());
-
+            allBetResponse = [];
             // Stop the game loop temporarily
             clearTimeout(countdownTimer);
             const countDocuments = await this.gameModel.countDocuments();
@@ -96,7 +96,7 @@ export class CrashGameCronService {
             console.log(game);
 
             indexId = indexId + 1;
-            bettingTime = 15;
+            bettingTime = 20;
 
             countdownTimer = setInterval(async () => {
               console.log(`Resuming game in ${bettingTime} seconds...`);
@@ -132,7 +132,7 @@ export class CrashGameCronService {
         };
 
         const gameResultGenrator = async () => {
-          const gameAmountInput = 100000;
+          const gameAmountInput = 30000;
           const gameHashInput = 'exampledssdhash';
           const gameSaltInput = 'exampefrflesalt';
           let prevHash = null;
@@ -167,9 +167,9 @@ export class CrashGameCronService {
           X = 99 / (1 - X);
           const result = Math.floor(X);
           // console.log(Math.max(1, result / 100));
-          resultX.push(Math.max(1, result / 100));
+          resultX.push(Math.max(1, result / 200).toFixed(2));
           // resultx.push(2);
-          return Math.max(1, result / 100);
+          return Math.max(1, result / 200);
         };
         gameResultGenrator();
       } catch (error) {
@@ -191,3 +191,42 @@ export class CrashGameCronService {
     }
   }
 }
+
+export const addBetLoacal = (obj) => {
+  allBetResponse.push(obj);
+};
+
+export const getBetsLocal = () => {
+  return allBetResponse;
+};
+
+export const cashOut = (userId: string) => {
+  // Find the user's bet in the normalBet array
+  const userBetIndex = allBetResponse.findIndex(
+    (bet) => bet.userId.userId === userId,
+  );
+  // If the user is found and has not cashed out yet
+  if (userBetIndex !== -1) {
+    const userBet = allBetResponse[userBetIndex];
+    // Calculate the cashed out amount (for simplicity, let's assume it's the amount multiplied by the current multiplier)
+    const cashedOutAmount = userBet.userId.amount * multipliers;
+    // Remove the user's bet from the normalBet array
+    allBetResponse.splice(userBetIndex, 1);
+    console.log('user winning amount: ', cashedOutAmount);
+    const obj = {
+      succes: true,
+      cashOutAmount: cashedOutAmount,
+    };
+    return obj;
+    // TODO: You might want to update the user's balance or perform other related tasks here
+  } else {
+    // Handle the case where the user is not found or has already cashed out
+    console.error(
+      `User with ID ${userId} not found or has already cashed out.`,
+    );
+    const obj = {
+      succes: false,
+    };
+    return obj;
+  }
+};
