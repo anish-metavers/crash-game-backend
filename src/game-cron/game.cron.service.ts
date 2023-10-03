@@ -146,7 +146,7 @@ export class CrashGameCronService {
         };
 
         const gameResultGenrator = async () => {
-          const gameAmountInput = 20;
+          const gameAmountInput = 10000;
           const gameHashInput = 'exampledssdhash';
           const gameSaltInput = 'exampefrflesalt';
           let prevHash = null;
