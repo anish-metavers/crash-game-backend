@@ -3,14 +3,18 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Cron } from '@nestjs/schedule';
 import { GameGateway } from 'src/game/game.gateway';
 import { Game, GameDocument } from 'model/t_game';
-import { Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import { Wallet, WalletDocument } from 'model/t_wallet';
 import { Bet, BetDocument } from 'model/t_bet';
+import { GameLogic, GameLogicDocument } from 'model/t_game_logic';
 const CryptoJS = require('crypto-js');
 
 export let gameStatus = 'Game Waiting';
 export let bettingTime = 0;
 let allBetResponse = [];
+let resultX = [];
+let hashX = [];
+let gameNumber;
 let multipliers = 1;
 @Injectable()
 export class CrashGameCronService {
@@ -21,13 +25,19 @@ export class CrashGameCronService {
     private walletModel: Model<WalletDocument>,
     @InjectModel(Bet.name)
     private betModel: Model<BetDocument>,
+    @InjectModel(GameLogic.name)
+    private gameLogicModel: Model<GameLogicDocument>,
     private gameGateway: GameGateway,
   ) {}
   private SocketServer = null;
   private flags = false;
   private readonly logger = new Logger(CrashGameCronService.name);
+
   @Cron('*/01 * * * * *')
   async handleCrashGame() {
+    const game = await this.gameLogicModel.find();
+    gameNumber = game[0].gameNumber;
+
     if (this.flags == false) {
       try {
         this.logger.debug('Crash game service is running 1 seconds');
@@ -35,8 +45,6 @@ export class CrashGameCronService {
         if (!this.SocketServer) {
           this.SocketServer = this.gameGateway.getSocketServer();
         }
-        let resultX = [];
-        let hashX = [];
         let serverSpeed = 0.00001;
         let lastTime = Date.now();
         let indexId = 1;
@@ -51,7 +59,6 @@ export class CrashGameCronService {
 
           multipliers = multipliers + serverSpeed;
 
-          // serverSpeed = serverSpeed + (serverSpeed / (200 * 4)) * deltaTime;
           console.log(
             multipliers.toFixed(2),
             'crash at',
@@ -59,6 +66,12 @@ export class CrashGameCronService {
             'crash id',
             indexId,
           );
+
+          this.SocketServer.emit('Multipliers', {
+            multipliers: `${multipliers.toFixed(2)}
+            'crash at'
+            ${resultX[indexId]}`,
+          });
 
           // Reset game if crashed
           if (multipliers >= resultX[indexId]) {
@@ -96,9 +109,10 @@ export class CrashGameCronService {
             console.log(game);
 
             indexId = indexId + 1;
-            bettingTime = 20;
+            bettingTime = 10;
 
             countdownTimer = setInterval(async () => {
+              this.SocketServer.emit('bettingTime', { bettingTime });
               console.log(`Resuming game in ${bettingTime} seconds...`);
               bettingTime--;
               if (bettingTime === 0) {
@@ -132,7 +146,7 @@ export class CrashGameCronService {
         };
 
         const gameResultGenrator = async () => {
-          const gameAmountInput = 30000;
+          const gameAmountInput = 20;
           const gameHashInput = 'exampledssdhash';
           const gameSaltInput = 'exampefrflesalt';
           let prevHash = null;
@@ -147,6 +161,7 @@ export class CrashGameCronService {
           resultX = resultX.reverse();
           hashX = hashX.reverse();
           console.log('Game hash data', hashX);
+          // this.SocketServer.emit('gameData', { resultX });
           console.log('Game data', resultX);
           gameLoop();
         };
@@ -167,9 +182,9 @@ export class CrashGameCronService {
           X = 99 / (1 - X);
           const result = Math.floor(X);
           // console.log(Math.max(1, result / 100));
-          resultX.push(Math.max(1, result / 200).toFixed(2));
+          resultX.push(Math.max(1, result / gameNumber).toFixed(2));
           // resultx.push(2);
-          return Math.max(1, result / 200);
+          return Math.max(1, result / gameNumber);
         };
         gameResultGenrator();
       } catch (error) {
@@ -184,7 +199,7 @@ export class CrashGameCronService {
       const find = await this.gameModel.findById(gameId);
       await this.betModel.updateMany(
         { gameId: gameId },
-        { $set: { crashNumber: find.gameCrashNumber, profit: 0 } },
+        { $set: { crashNumber: find.gameCrashNumber } },
       );
     } catch (error) {
       console.log(error);
@@ -200,19 +215,41 @@ export const getBetsLocal = () => {
   return allBetResponse;
 };
 
-export const cashOut = (userId: string) => {
+export const cashOut = async (
+  userId: string,
+  betModel: any,
+  walletModel: any,
+) => {
   // Find the user's bet in the normalBet array
-  const userBetIndex = allBetResponse.findIndex(
-    (bet) => bet.userId.userId === userId,
-  );
+  console.log('user data :', allBetResponse);
+
+  const userBetIndex = allBetResponse.findIndex((bet) => bet.userId === userId);
   // If the user is found and has not cashed out yet
   if (userBetIndex !== -1) {
     const userBet = allBetResponse[userBetIndex];
     // Calculate the cashed out amount (for simplicity, let's assume it's the amount multiplied by the current multiplier)
-    const cashedOutAmount = userBet.userId.amount * multipliers;
+    const cashedOutAmount = userBet.amount * multipliers;
     // Remove the user's bet from the normalBet array
     allBetResponse.splice(userBetIndex, 1);
     console.log('user winning amount: ', cashedOutAmount);
+    console.log('userBet: ', userBet);
+    const user_id = userBet.userId;
+    const game_id = userBet.gameId;
+    await betModel.updateMany(
+      { userId: user_id, gameId: game_id },
+      { profit: cashedOutAmount, payout: multipliers },
+    );
+    const data = await walletModel.findOne({
+      userId: new mongoose.Types.ObjectId(user_id),
+    });
+
+    let Amount = data.amount;
+    let userId = data.userId;
+
+    await walletModel.findOneAndUpdate(
+      { userId },
+      { amount: Amount + cashedOutAmount },
+    );
     const obj = {
       succes: true,
       cashOutAmount: cashedOutAmount,
@@ -229,4 +266,41 @@ export const cashOut = (userId: string) => {
     };
     return obj;
   }
+};
+
+export const gameResultUpdater = async (newGameNumber) => {
+  const gameAmountInput = 100000;
+  const gameHashInput = 'exampledssdhash';
+  const gameSaltInput = 'exampefrflesalt';
+  let prevHash = null;
+  for (let i = 0; i < gameAmountInput; i++) {
+    let hash = String(
+      prevHash ? CryptoJS.SHA256(String(prevHash)) : gameHashInput,
+    );
+    hashX.push(hash);
+    gameResult(hash, gameSaltInput, newGameNumber);
+    prevHash = hash;
+  }
+  resultX = resultX.reverse();
+  hashX = hashX.reverse();
+  console.log('Game hash data', hashX);
+  console.log('Game data', resultX);
+};
+
+const gameResult = async (seed, salt, newGameNumber) => {
+  const nBits = 52; // number of most significant bits to use
+  if (salt) {
+    const hmac = CryptoJS.HmacSHA256(CryptoJS.enc.Hex.parse(seed), salt);
+    seed = hmac.toString(CryptoJS.enc.Hex);
+  }
+  seed = seed.slice(0, nBits / 4);
+  const r = parseInt(seed, 16);
+  let X = r / Math.pow(2, nBits);
+  X = parseFloat(X.toPrecision(9));
+  X = 99 / (1 - X);
+  const result = Math.floor(X);
+  // console.log(Math.max(1, result / 100));
+  resultX.push(Math.max(1, result / newGameNumber).toFixed(2));
+  // resultx.push(2);
+  return Math.max(1, result / newGameNumber);
 };

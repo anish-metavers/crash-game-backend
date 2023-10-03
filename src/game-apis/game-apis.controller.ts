@@ -2,20 +2,13 @@ import {
   Controller,
   Get,
   Body,
-  Patch,
+  Put,
   Param,
-  Post,
-  Delete,
-  UseGuards,
   UseFilters,
-  Req,
 } from '@nestjs/common';
 import { GameApisService } from './game-apis.service';
-import { CreateGameApiDto } from './dto/create-game-api.dto';
 import { UpdateGameApiDto } from './dto/update-game-api.dto';
 import { HttpExceptionFilter } from 'exception/httpExceptionFilter';
-import { AuthGuard } from 'guard/authGuard';
-
 @UseFilters(HttpExceptionFilter)
 @Controller('/game')
 export class GameApisController {
@@ -36,13 +29,9 @@ export class GameApisController {
   //   return this.gameApisService.findOne(+id);
   // }
 
-  @UseGuards(AuthGuard)
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateGameApiDto: UpdateGameApiDto,
-  ) {
-    return this.gameApisService.update(+id, updateGameApiDto);
+  @Put(':id')
+  update(@Param('id') id: string, @Body() updateGameApiDto: UpdateGameApiDto) {
+    return this.gameApisService.updateGameLogic(id, updateGameApiDto);
   }
 
   // @Delete(':id')

@@ -57,7 +57,7 @@ export class BetService {
           amount: amount || 1,
           payout: payout || 100,
           time: new Date(),
-          profit: 0.0,
+          profit: 0,
         });
         await betCreate.save();
         addBetLoacal({
@@ -90,12 +90,14 @@ export class BetService {
   async crashOut(req: Request) {
     try {
       const user_id = req['user_id'];
-      cashOut(user_id);
+      cashOut(user_id, this.betModel, this.walletModel);
 
-      throw new HttpException(
-        { message: 'user_id passed successfully', user_id },
-        201,
-      );
+      return { message: 'Cash out successfully', user_id };
+
+      // throw new HttpException(
+      //   { message: 'user_id passed successfully', user_id },
+      //   201,
+      // );
     } catch (error) {
       console.log(error);
     }
